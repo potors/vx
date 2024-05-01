@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::env;
-use std::path::Path;
 use std::process;
 
 const BUFFER_SIZE: usize = 16;
@@ -28,45 +27,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let read = reader.read(&mut buffer)?;
 
         if read > 0 {
+            let bytes = paint_bytes(&buffer[..read]);
+
             // address column
-            print!("\x1b[36m{address:#08X?}\x1b[m ");
+            print!("\x1b[1m{address:#08X?}\x1b[m");
 
             // empty space
-            print!(" ");
+            print!("  ");
 
             // hex column
-            // TODO color by column % 2
-            for (i, byte) in buffer[..read].iter().enumerate() {
-                if i % 2 == 0 {
-                    print!("\x1b[1m{byte:02X?}\x1b[m");
-                } else {
-                    print!("{byte:02X?} ");
-                }
+            for (i, (byte, (_, color))) in bytes.iter().enumerate() {
+                let space = if i % 2 == 0 { "" } else { " " };
+                print!("\x1b[{color}m{byte:02X?}\x1b[m{space}");
             }
 
             // empty hex cell
-            for _ in 0..BUFFER_SIZE - read {
-                print!("   ");
+            for i in 0..BUFFER_SIZE - read {
+                let space = if i % 2 == 0 { " " } else { "" };
+                print!("  {space}");
             }
 
             // empty space
-            print!(" ");
+            print!("  ");
 
             // char column
-            for byte in &buffer[..read] {
-                let char = *byte as char;
-
-                if char.is_ascii_whitespace() {
-                    print!(" ");
-                } else if char.is_ascii_alphabetic() {
-                    print!("\x1b[32m{char}\x1b[m");
-                } else if char.is_ascii_punctuation() {
-                    print!("\x1b[33m{char}\x1b[m");
-                } else if char.is_ascii_digit() {
-                    print!("\x1b[35m{char}\x1b[m");
-                } else {
-                    print!("\x1b[38m.\x1b[m")
-                }
+            for (_, (char, color)) in bytes {
+                print!("\x1b[{color}m{char}\x1b[m");
             }
 
             println!();
@@ -78,4 +64,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+fn paint_bytes(bytes: &[u8]) -> Vec<(u8, (char, &'static str))> {
+    bytes.iter().map(|&byte| {
+        let pretty = if byte as char == ' ' {
+            (byte as char, "0")
+        } else if byte.is_ascii_digit() {
+            (byte as char, "33")
+        } else if byte.is_ascii_alphabetic() {
+            (byte as char, "32")
+        } else if byte.is_ascii_punctuation() {
+            (byte as char, "36")
+        } else if byte.is_ascii_control() {
+            ('.', "31")
+        } else {
+            ('.', "0")
+        };
+
+        (byte, pretty)
+    }).collect()
 }
