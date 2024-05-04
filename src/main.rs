@@ -13,9 +13,6 @@ enum AsciiType {
     Exotic
 }
 
-const BUFFER_SIZE: usize = 16;
-
-// this table is nuts
 const ASCII_TYPES: [AsciiType; 128] = {
     use AsciiType::*;
 
@@ -77,6 +74,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let path = env::current_dir()?.join(path.unwrap());
+    let groups = 8;
+    let group_size = 2;
+    let buffer_size = groups * group_size;
 
     let file = File::open(path)?;
 
@@ -84,40 +84,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut address: usize = 0x0;
 
     loop {
-        let mut buffer = vec![0u8; BUFFER_SIZE];
+        let mut buffer = vec![0u8; buffer_size];
         let read = reader.read(&mut buffer)?;
 
         if read > 0 {
             let bytes = paint_bytes(&buffer[..read]);
 
-            // address column
-            print!("\x1b[1m{address:#08X?}\x1b[m");
+            print!("{address:#010X?}  ");
 
-            // empty space
-            print!("  ");
+            for (byte, (_, color)) in &bytes {
+                print!("\x1b[{color}m{byte:02X?}");
+                if address % group_size == group_size - 1 {
+                    print!(" ");
+                }
 
-            // hex column
-            for (i, (byte, (_, color))) in bytes.iter().enumerate() {
-                let space = if i % 2 == 0 { "" } else { " " };
-                print!("\x1b[{color}m{byte:02X?}\x1b[m{space}");
+                address += 1;
             }
 
-            // empty hex cell
-            for i in 0..BUFFER_SIZE - read {
-                let space = if i % 2 == 0 { " " } else { "" };
-                print!("  {space}");
+            print!(" ");
+
+            for (_, (char, color)) in &bytes {
+                print!("\x1b[{color};1m{char}");
             }
 
-            // empty space
-            print!("  ");
-
-            // char column
-            for (_, (char, color)) in bytes {
-                print!("\x1b[{color}m{char}\x1b[m");
-            }
-
-            println!();
-            address += BUFFER_SIZE;
+            println!("\x1b[m");
             continue;
         }
 
