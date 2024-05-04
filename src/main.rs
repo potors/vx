@@ -64,18 +64,20 @@ const ASCII_TYPES: [AsciiType; 128] = {
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = env::args().skip(1).collect::<Vec<_>>();
+    let mut args = env::args().skip(1).collect::<Vec<_>>();
 
-    let path = args.first();
+    let path = args.pop();
+    let groups = args.pop().and_then(|s| s.parse::<usize>().ok());
+    let group_size = args.pop().and_then(|s| s.parse::<usize>().ok());
 
     if path.is_none() {
-        eprintln!("Usage: vx <path>");
+        eprintln!("Usage: vx [groups [group_size]] <path>");
         process::exit(1);
     }
 
     let path = env::current_dir()?.join(path.unwrap());
-    let groups = 8;
-    let group_size = 2;
+    let groups = groups.unwrap_or(8);
+    let group_size = group_size.unwrap_or(2);
     let buffer_size = groups * group_size;
 
     let file = File::open(path)?;
