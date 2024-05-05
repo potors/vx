@@ -67,8 +67,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1).collect::<Vec<_>>();
 
     let path = args.pop();
-    let groups = args.pop().and_then(|s| s.parse::<usize>().ok());
-    let group_size = args.pop().and_then(|s| s.parse::<usize>().ok());
+    let groups = if !args.is_empty() { args.remove(0).parse::<usize>().ok() } else { None };
+    let group_size = if !args.is_empty() { args.remove(0).parse::<usize>().ok() } else { None };
 
     if path.is_none() {
         eprintln!("Usage: vx [groups [group_size]] <path>");
